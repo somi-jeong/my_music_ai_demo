@@ -32,18 +32,18 @@ class SavedPage extends StatelessWidget {
             Image.asset('assets/note_image.png', width: 300, height: 300),
             const SizedBox(height: 30),
             AudioTile(
-              title: "Funny Cat",
-              filePath: "assets/audio/sample_audio.mp3",
+              title: "Cat Rhythm1",
+              filePath: "assets/audio/fourth.mp3",
             ),
             const SizedBox(height: 20),
             AudioTile(
-              title: "Lion Roar",
-              filePath: "assets/audio/sample_audio.mp3",
+              title: "Cat Rhythm2",
+              filePath: "assets/audio/fourth.mp3",
             ),
             const SizedBox(height: 20),
             AudioTile(
-              title: "Elephant Trumpet",
-              filePath: "assets/audio/sample_audio.mp3",
+              title: "Cat Rhythm3",
+              filePath: "assets/audio/fourth.mp3",
             ),
           ],
         ),
@@ -63,22 +63,21 @@ class AudioTile extends StatefulWidget {
 }
 
 class _AudioTileState extends State<AudioTile> {
-  late AudioPlayer _player;
-  bool _isPlaying = false;
+  late final AudioPlayer _player;
 
   @override
   void initState() {
     super.initState();
-    _initPlayer();
+    _player = AudioPlayer();
+    _initAudio();
   }
 
-  Future<void> _initPlayer() async {
-    _player = AudioPlayer();
+  Future<void> _initAudio() async {
     try {
       await _player.setAsset(widget.filePath);
     } catch (e) {
-      print('Error loading audio asset: ${widget.filePath}');
-      print('Exception: $e');
+      print('Error loading audio: ${widget.filePath}');
+      print(e);
     }
   }
 
@@ -89,15 +88,18 @@ class _AudioTileState extends State<AudioTile> {
   }
 
   void _togglePlay() async {
-    if (_isPlaying) {
+    final state = _player.playerState;
+    final isCompleted = state.processingState == ProcessingState.completed;
+
+    if (isCompleted) {
+      await _player.seek(Duration.zero);
+    }
+
+    if (_player.playing) {
       await _player.pause();
     } else {
       await _player.play();
     }
-
-    setState(() {
-      _isPlaying = !_isPlaying;
-    });
   }
 
   @override
@@ -105,7 +107,7 @@ class _AudioTileState extends State<AudioTile> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.8),
+        color: Colors.white.withValues(alpha: .8),
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [
           BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(2, 2)),
@@ -113,13 +115,25 @@ class _AudioTileState extends State<AudioTile> {
       ),
       child: Row(
         children: [
-          IconButton(
-            icon: Icon(
-              _isPlaying ? Icons.pause : Icons.play_arrow,
-              size: 32,
-              color: Colors.black87,
-            ),
-            onPressed: _togglePlay,
+          StreamBuilder<PlayerState>(
+            stream: _player.playerStateStream,
+            builder: (context, snapshot) {
+              final state = snapshot.data;
+              final isPlaying = state?.playing ?? false;
+              final isCompleted =
+                  state?.processingState == ProcessingState.completed;
+
+              final showPause = isPlaying && !isCompleted;
+
+              return IconButton(
+                icon: Icon(
+                  showPause ? Icons.pause : Icons.play_arrow,
+                  size: 32,
+                  color: Colors.black87,
+                ),
+                onPressed: _togglePlay,
+              );
+            },
           ),
           const SizedBox(width: 12),
           Expanded(
